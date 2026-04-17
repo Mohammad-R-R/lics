@@ -1,0 +1,2 @@
+# Ignore credentials config - never commit this
+config.js

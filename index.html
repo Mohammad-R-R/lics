@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام طلبات رخصة القيادة</title>
+<!-- Load credentials config FIRST -->
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1a3a5c;
+    --primary-light: #2563a8;
+    --accent: #d4a843;
+    --accent-light: #f0c96e;
+    --surface: #ffffff;
+    --surface2: #f4f7fc;
+    --surface3: #e8eef8;
+    --text: #0f1e30;
+    --text-muted: #5a7a99;
+    --border: #c8d9ee;
+    --success: #16a34a;
+    --warning: #d97706;
+    --info: #2563eb;
+    --danger: #dc2626;
+    --radius: 14px;
+    --shadow: 0 4px 24px rgba(26,58,92,0.10);
+    --shadow-lg: 0 8px 40px rgba(26,58,92,0.16);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Cairo', 'Tajawal', sans-serif;
+    background: linear-gradient(135deg, #0f1e30 0%, #1a3a5c 40%, #2563a8 100%);
+    min-height: 100vh;
+    direction: rtl;
+    color: var(--text);
+  }
+
+  .header {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 72px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo-icon {
+    width: 46px; height: 46px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .logo-text { color: #fff; }
+  .logo-text h1 { font-size: 16px; font-weight: 700; line-height: 1.2; }
+  .logo-text p { font-size: 11px; color: rgba(255,255,255,0.55); }
+
+  .nav-btn {
+    padding: 10px 22px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.4); }
+  .nav-btn.accent { background: var(--accent); border-color: var(--accent); color: #1a1a1a; }
+  .nav-btn.accent:hover { background: var(--accent-light); }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .app-container {
+    max-width: 860px;
+    margin: 40px auto;
+    padding: 0 20px 60px;
+  }
+
+  .page-hero { text-align: center; color: #fff; margin-bottom: 36px; }
+  .page-hero .badge {
+    display: inline-block;
+    background: rgba(212,168,67,0.15);
+    border: 1px solid rgba(212,168,67,0.4);
+    color: var(--accent-light);
+    padding: 6px 18px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .page-hero h2 { font-size: 32px; font-weight: 900; margin-bottom: 10px; }
+  .page-hero p { font-size: 15px; color: rgba(255,255,255,0.6); }
+
+  .form-card {
+    background: var(--surface);
+    border-radius: 24px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+  .form-section {
+    padding: 32px 40px;
+    border-bottom: 1px solid var(--surface3);
+  }
+  .form-section:last-child { border-bottom: none; }
+
+  .section-title { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .section-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 17px; flex-shrink: 0;
+  }
+  .section-title h3 { font-size: 17px; font-weight: 700; color: var(--primary); }
+  .section-title p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .field.full { grid-column: 1 / -1; }
+
+  label { font-size: 13px; font-weight: 600; color: var(--primary); }
+  label span.req { color: var(--danger); margin-right: 3px; }
+
+  input[type="text"], input[type="number"], input[type="tel"], select {
+    width: 100%; padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px; color: var(--text);
+    background: var(--surface2);
+    transition: all 0.2s; outline: none; direction: rtl;
+  }
+  input:focus, select:focus {
+    border-color: var(--primary-light);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(37,99,168,0.10);
+  }
+
+  .dob-group { display: flex; gap: 10px; }
+  .dob-group select { flex: 1; }
+
+  /* Upload zones */
+  .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    padding: 24px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: var(--surface2);
+    position: relative; overflow: hidden;
+  }
+  .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary-light); background: #eef4ff; }
+  .upload-zone.has-file { border-color: var(--success); background: #f0fdf4; }
+  .upload-zone.uploading { border-color: var(--warning); background: #fffbeb; }
+  .upload-zone.error { border-color: var(--danger); background: #fef2f2; }
+
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer;
+    width: 100%; height: 100%;
+  }
+  .upload-icon { font-size: 32px; margin-bottom: 8px; }
+  .upload-label { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+  .upload-hint { font-size: 11px; color: var(--text-muted); }
+  .upload-preview { max-width: 100%; max-height: 90px; border-radius: 8px; object-fit: contain; margin-top: 8px; display: none; }
+  .upload-status { font-size: 12px; font-weight: 600; margin-top: 6px; display: none; }
+  .upload-status.ok { color: var(--success); }
+  .upload-status.err { color: var(--danger); }
+  .upload-status.loading { color: var(--warning); }
+
+  .progress-bar-wrap { width: 100%; background: #e5e7eb; border-radius: 99px; height: 5px; margin-top: 8px; display: none; overflow: hidden; }
+  .progress-bar { height: 100%; background: var(--primary-light); border-radius: 99px; width: 0%; transition: width 0.3s; }
+
+  .upload-check { display: none; font-size: 20px; margin-bottom: 4px; }
+  .upload-zone.has-file .upload-check { display: block; }
+  .upload-zone.has-file .upload-icon { display: none; }
+
+  /* Submit */
+  .submit-section {
+    padding: 28px 40px;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .submit-note { font-size: 12px; color: var(--text-muted); max-width: 400px; line-height: 1.6; }
+  .submit-btn {
+    padding: 15px 48px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #fff; border: none; border-radius: 12px;
+    font-family: 'Cairo', sans-serif; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(26,58,92,0.3); white-space: nowrap;
+  }
+  .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(26,58,92,0.4); }
+  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  /* Success */
+  .success-card {
+    background: var(--surface); border-radius: 24px;
+    box-shadow: var(--shadow-lg); padding: 60px 40px; text-align: center;
+  }
+  .success-icon { font-size: 64px; margin-bottom: 20px; animation: bounceIn 0.5s ease; }
+  @keyframes bounceIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .success-title { font-size: 28px; font-weight: 900; color: var(--primary); margin-bottom: 12px; }
+  .success-msg { color: var(--text-muted); font-size: 15px; line-height: 1.7; margin-bottom: 8px; }
+  .app-id { font-size: 20px; font-weight: 700; color: var(--primary-light); margin: 16px 0; padding: 14px 24px; background: var(--surface2); border-radius: 12px; display: inline-block; letter-spacing: 1px; }
+  .new-app-btn {
+    margin-top: 24px; padding: 13px 36px;
+    background: var(--primary); color: #fff; border: none; border-radius: 10px;
+    font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .new-app-btn:hover { background: var(--primary-light); }
+
+  /* Login */
+  .login-container { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 72px); padding: 40px 20px; }
+  .login-card { background: var(--surface); border-radius: 24px; box-shadow: var(--shadow-lg); padding: 50px 48px; width: 100%; max-width: 440px; text-align: center; }
+  .login-icon { font-size: 48px; margin-bottom: 12px; }
+  .login-card h2 { font-size: 24px; font-weight: 900; color: var(--primary); margin-bottom: 6px; }
+  .login-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
+  .login-field { margin-bottom: 18px; text-align: right; }
+  .login-field label { display: block; font-size: 13px; font-weight: 600; color: var(--primary); margin-bottom: 7px; }
+  .login-field input {
+    width: 100%; padding: 13px 16px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: 'Cairo', sans-serif; font-size: 14px; color: var(--text);
+    background: var(--surface2); outline: none; direction: ltr; text-align: left; transition: all 0.2s;
+  }
+  .login-field input:focus { border-color: var(--primary-light); background: #fff; box-shadow: 0 0 0 3px rgba(37,99,168,0.10); }
+  .login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border: none; border-radius: 12px; font-family: 'Cairo', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: all 0.2s; }
+  .login-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .login-error { color: var(--danger); font-size: 13px; margin-top: 14px; display: none; }
+
+  /* Admin */
+  .admin-container { max-width: 1200px; margin: 0 auto; padding: 36px 24px 60px; }
+  .admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  .admin-header h2 { color: #fff; font-size: 26px; font-weight: 900; }
+  .admin-header p { color: rgba(255,255,255,0.55); font-size: 13px; margin-top: 3px; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 20px; color: #fff; text-align: center; }
+  .stat-num { font-size: 32px; font-weight: 900; color: var(--accent-light); }
+  .stat-lbl { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+
+  .apps-card { background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-lg); overflow: hidden; }
+  .apps-toolbar { padding: 20px 28px; border-bottom: 1px solid var(--surface3); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .apps-toolbar h3 { font-size: 16px; font-weight: 700; color: var(--primary); }
+  .search-input { padding: 10px 16px; border: 1.5px solid var(--border); border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 13px; width: 260px; outline: none; transition: all 0.2s; direction: rtl; background: var(--surface2); }
+  .search-input:focus { border-color: var(--primary-light); background: #fff; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: var(--surface2); }
+  th { padding: 13px 18px; text-align: right; font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  td { padding: 14px 18px; font-size: 13px; border-bottom: 1px solid var(--surface3); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .status-badge.pending { background: #fef3c7; color: #92400e; }
+  .status-badge.processing { background: #dbeafe; color: #1e40af; }
+  .status-badge.shipped { background: #ede9fe; color: #6b21a8; }
+  .status-badge.delivered { background: #dcfce7; color: #166534; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  .status-select { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 12px; cursor: pointer; background: var(--surface2); outline: none; direction: rtl; font-weight: 600; transition: all 0.2s; }
+  .status-select:focus { border-color: var(--primary-light); }
+
+  .view-btn { padding: 7px 14px; background: var(--primary); color: #fff; border: none; border-radius: 7px; font-family: 'Cairo', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .view-btn:hover { background: var(--primary-light); }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 20px; width: 100%; max-width: 740px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.4); }
+  .modal-header { padding: 24px 28px; border-bottom: 1px solid var(--surface3); display: flex; align-items: center; justify-content: space-between; }
+  .modal-header h3 { font-size: 18px; font-weight: 700; color: var(--primary); }
+  .close-btn { width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface2); cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .close-btn:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .modal-body { padding: 28px; }
+
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  .detail-item .d-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .detail-item .d-val { font-size: 14px; font-weight: 600; color: var(--text); background: var(--surface2); padding: 8px 12px; border-radius: 8px; }
+  .detail-item.full { grid-column: 1 / -1; }
+
+  .attachments-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
+  .att-box { border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; text-align: center; }
+  .att-img { width: 100%; height: 90px; object-fit: cover; display: block; cursor: pointer; }
+  .att-lbl { font-size: 11px; font-weight: 700; color: var(--text-muted); padding: 6px 4px; background: var(--surface2); border-top: 1px solid var(--border); }
+  .att-link { font-size: 11px; color: var(--primary-light); text-decoration: none; font-weight: 600; }
+  .att-none { height: 90px; display: flex; align-items: center; justify-content: center; background: var(--surface2); color: var(--text-muted); font-size: 12px; }
+
+  .modal-footer { padding: 20px 28px; border-top: 1px solid var(--surface3); display: flex; align-items: center; gap: 12px; justify-content: flex-end; }
+  .save-status-btn { padding: 11px 28px; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+  .save-status-btn:hover { background: var(--primary-light); }
+
+  /* Uploading overlay on submit */
+  .upload-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(15,30,48,0.85); z-index: 500;
+    align-items: center; justify-content: center; flex-direction: column;
+    color: #fff; text-align: center; backdrop-filter: blur(6px);
+  }
+  .upload-overlay.open { display: flex; }
+  .upload-overlay-icon { font-size: 52px; margin-bottom: 16px; animation: spin 2s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .upload-overlay h3 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .upload-overlay p { color: rgba(255,255,255,0.6); font-size: 14px; }
+  .overall-progress { width: 260px; height: 6px; background: rgba(255,255,255,0.15); border-radius: 99px; margin-top: 20px; overflow: hidden; }
+  .overall-bar { height: 100%; background: var(--accent); border-radius: 99px; width: 0%; transition: width 0.4s; }
+
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a3a5c; color: #fff; padding: 14px 28px; border-radius: 12px; font-size: 14px; font-weight: 600; box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 9999; transition: transform 0.3s ease; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: #166534; }
+  .toast.error { background: #991b1b; }
+
+  @media (max-width: 700px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .form-grid.three { grid-template-columns: 1fr 1fr; }
+    .upload-grid { grid-template-columns: 1fr 1fr; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .attachments-row { grid-template-columns: 1fr 1fr; }
+    .submit-section { flex-direction: column; align-items: stretch; }
+    .header { padding: 0 16px; }
+    .form-section { padding: 24px 20px; }
+    .detail-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Upload Overlay -->
+<div class="upload-overlay" id="uploadOverlay">
+  <div class="upload-overlay-icon">⚙️</div>
+  <h3>جارٍ رفع المرفقات...</h3>
+  <p id="overlayStatus">يُرجى الانتظار، لا تغلق الصفحة</p>
+  <div class="overall-progress"><div class="overall-bar" id="overallBar"></div></div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">🪪</div>
+    <div class="logo-text">
+      <h1>نظام رخصة القيادة الدولية</h1>
+      <p>البوابة الإلكترونية الرسمية</p>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <button class="nav-btn" id="navApp">تقديم طلب</button>
+    <button class="nav-btn" id="navLogin">لوحة الإدارة</button>
+    <button class="nav-btn accent" id="navLogout" style="display:none" onclick="adminLogout()">تسجيل الخروج</button>
+  </div>
+</header>
+
+<!-- APPLICATION PAGE -->
+<div id="pageApp" class="page active">
+  <div class="app-container">
+    <div class="page-hero">
+      <div class="badge">✦ النموذج الرسمي</div>
+      <h2>تقديم طلب رخصة القيادة</h2>
+      <p>يُرجى تعبئة جميع الحقول المطلوبة بدقة ووضوح</p>
+    </div>
+
+    <div id="formWrapper">
+      <form class="form-card" id="appForm" onsubmit="submitApp(event)">
+
+        <div class="form-section">
+          <div class="section-title">
+            <div class="section-icon">👤</div>
+            <div><h3>المعلومات الشخصية</h3><p>البيانات الأساسية للمتقدم</p></div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label>الاسم الأول <span class="req">*</span></label>
+              <input type="text" name="firstName" placeholder="أدخل الاسم الأول" required>
+            </div>
+            <div class="field">
+              <label>الاسم الأخير <span class="req">*</span></label>
+              <input type="text" name="lastName" placeholder="أدخل الاسم الأخير" required>
+            </div>
+            <div class="field">
+              <label>رقم الهاتف <span class="req">*</span></label>
+              <input type="tel" name="phone" placeholder="+970 5X XXX XXXX" required>
+            </div>
+            <div class="field">
+              <label>رقم رخصة القيادة <span class="req">*</span></label>
+              <input type="text" name="licenseNum" placeholder="أدخل رقم الرخصة" required>
+            </div>
+            <div class="field full">
+              <label>تاريخ الميلاد <span class="req">*</span></label>
+              <div class="dob-group">
+                <select name="dobDay" required>
+                  <option value="">اليوم</option>
+                  <script>for(let i=1;i<=31;i++) document.write(`<option value="${i}">${i}</option>`)</script>
+                </select>
+                <select name="dobMonth" required>
+                  <option value="">الشهر</option>
+                  <option value="1">يناير</option><option value="2">فبراير</option>
+                  <option value="3">مارس</option><option value="4">أبريل</option>
+                  <option value="5">مايو</option><option value="6">يونيو</option>
+                  <option value="7">يوليو</option><option value="8">أغسطس</option>
+                  <option value="9">سبتمبر</option><option value="10">أكتوبر</option>
+                  <option value="11">نوفمبر</option><option value="12">ديسمبر</option>
+                </select>
+                <select name="dobYear" required>
+                  <option value="">السنة</option>
+                  <script>for(let y=new Date().getFullYear()-16;y>=1940;y--) document.write(`<option value="${y}">${y}</option>`)</script>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">
+            <div class="section-icon">📋</div>
+            <div><h3>المعلومات الجسدية</h3><p>المواصفات الجسدية للمتقدم</p></div>
+          </div>
+          <div class="form-grid three">
+            <div class="field">
+              <label>الجنس <span class="req">*</span></label>
+              <select name="sex" required>
+                <option value="">اختر الجنس</option>
+                <option value="ذكر">ذكر</option>
+                <option value="أنثى">أنثى</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>لون العيون <span class="req">*</span></label>
+              <select name="eyes" required>
+                <option value="">اختر اللون</option>
+                <option value="بني">بني</option><option value="أسود">أسود</option>
+                <option value="أخضر">أخضر</option><option value="أزرق">أزرق</option>
+                <option value="رمادي">رمادي</option><option value="عسلي">عسلي</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>الطول (سم) <span class="req">*</span></label>
+              <input type="number" name="height" placeholder="مثال: 175" min="100" max="250" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">
+            <div class="section-icon">📎</div>
+            <div><h3>المرفقات المطلوبة</h3><p>يُرجى رفع جميع الوثائق — JPG أو PNG أو PDF</p></div>
+          </div>
+          <div class="upload-grid">
+            <div class="upload-zone" id="zone-passport" ondragover="handleDrag(event,this)" ondragleave="handleDragLeave(this)" ondrop="handleDrop(event,'passport',this)">
+              <input type="file" accept="image/*,.pdf" onchange="handleFile(this,'passport')">
+              <div class="upload-check">✅</div>
+              <div class="upload-icon">🛂</div>
+              <div class="upload-label">جواز السفر</div>
+              <div class="upload-hint">صورة واضحة لصفحة البيانات</div>
+              <img class="upload-preview" id="prev-passport">
+              <div class="upload-status" id="stat-passport"></div>
+              <div class="progress-bar-wrap" id="prog-passport"><div class="progress-bar" id="bar-passport"></div></div>
+            </div>
+            <div class="upload-zone" id="zone-id" ondragover="handleDrag(event,this)" ondragleave="handleDragLeave(this)" ondrop="handleDrop(event,'id',this)">
+              <input type="file" accept="image/*,.pdf" onchange="handleFile(this,'id')">
+              <div class="upload-check">✅</div>
+              <div class="upload-icon">🪪</div>
+              <div class="upload-label">بطاقة الهوية</div>
+              <div class="upload-hint">الوجهان الأمامي والخلفي</div>
+              <img class="upload-preview" id="prev-id">
+              <div class="upload-status" id="stat-id"></div>
+              <div class="progress-bar-wrap" id="prog-id"><div class="progress-bar" id="bar-id"></div></div>
+            </div>
+            <div class="upload-zone" id="zone-signature" ondragover="handleDrag(event,this)" ondragleave="handleDragLeave(this)" ondrop="handleDrop(event,'signature',this)">
+              <input type="file" accept="image/*" onchange="handleFile(this,'signature')">
+              <div class="upload-check">✅</div>
+              <div class="upload-icon">✍️</div>
+              <div class="upload-label">التوقيع</div>
+              <div class="upload-hint">صورة واضحة للتوقيع الشخصي</div>
+              <img class="upload-preview" id="prev-signature">
+              <div class="upload-status" id="stat-signature"></div>
+              <div class="progress-bar-wrap" id="prog-signature"><div class="progress-bar" id="bar-signature"></div></div>
+            </div>
+            <div class="upload-zone" id="zone-photo" ondragover="handleDrag(event,this)" ondragleave="handleDragLeave(this)" ondrop="handleDrop(event,'photo',this)">
+              <input type="file" accept="image/*" onchange="handleFile(this,'photo')">
+              <div class="upload-check">✅</div>
+              <div class="upload-icon">📷</div>
+              <div class="upload-label">الصورة الشخصية</div>
+              <div class="upload-hint">خلفية بيضاء، وجه ظاهر بوضوح</div>
+              <img class="upload-preview" id="prev-photo">
+              <div class="upload-status" id="stat-photo"></div>
+              <div class="progress-bar-wrap" id="prog-photo"><div class="progress-bar" id="bar-photo"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="submit-section">
+          <p class="submit-note">بتقديم هذا الطلب، أقر بأن جميع المعلومات صحيحة وأتحمل المسؤولية القانونية الكاملة عن أي بيانات مغلوطة.</p>
+          <button type="submit" class="submit-btn" id="submitBtn">إرسال الطلب ←</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="successWrapper" style="display:none">
+      <div class="success-card">
+        <div class="success-icon">🎉</div>
+        <div class="success-title">تم استلام طلبك بنجاح!</div>
+        <p class="success-msg">شكراً لك. سيتم مراجعة طلبك من قِبل الفريق المختص.</p>
+        <p class="success-msg">رقم طلبك المرجعي:</p>
+        <div class="app-id" id="generatedId"></div>
+        <p class="success-msg" style="font-size:13px">احتفظ بهذا الرقم للمتابعة</p>
+        <button class="new-app-btn" onclick="resetForm()">تقديم طلب جديد</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN PAGE -->
+<div id="pageLogin" class="page">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-icon">🔐</div>
+      <h2>لوحة إدارة الطلبات</h2>
+      <p>يُرجى تسجيل الدخول للوصول إلى لوحة التحكم</p>
+      <div class="login-field">
+        <label>اسم المستخدم</label>
+        <input type="text" id="loginUser" placeholder="username" autocomplete="username">
+      </div>
+      <div class="login-field">
+        <label>كلمة المرور</label>
+        <input type="password" id="loginPass" placeholder="password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="login-btn" onclick="doLogin()">تسجيل الدخول</button>
+      <div class="login-error" id="loginError">❌ اسم المستخدم أو كلمة المرور غير صحيحة</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PAGE -->
+<div id="pageAdmin" class="page">
+  <div class="admin-container">
+    <div class="admin-header">
+      <div>
+        <h2>🗂️ لوحة إدارة الطلبات</h2>
+        <p>مرحباً، محمد رداد | إدارة جميع طلبات رخصة القيادة</p>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">إجمالي الطلبات</div></div>
+      <div class="stat-card"><div class="stat-num" id="statPending">0</div><div class="stat-lbl">قيد الانتظار</div></div>
+      <div class="stat-card"><div class="stat-num" id="statShipped">0</div><div class="stat-lbl">تمت الشحنة</div></div>
+      <div class="stat-card"><div class="stat-num" id="statDelivered">0</div><div class="stat-lbl">تم التسليم</div></div>
+    </div>
+    <div class="apps-card">
+      <div class="apps-toolbar">
+        <h3>📄 قائمة الطلبات</h3>
+        <input type="text" class="search-input" id="searchInput" placeholder="🔍 ابحث بالاسم أو رقم الطلب..." oninput="renderTable()">
+      </div>
+      <div id="tableWrapper"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modalBox">
+    <div class="modal-header">
+      <h3 id="modalTitle">تفاصيل الطلب</h3>
+      <button class="close-btn" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <select class="status-select" id="modalStatusSelect" style="font-size:14px;padding:10px 16px">
+        <option value="pending">⏳ قيد الانتظار</option>
+        <option value="processing">🔄 قيد المعالجة</option>
+        <option value="shipped">📦 تم الشحن</option>
+        <option value="delivered">✅ تم التسليم</option>
+      </select>
+      <button class="save-status-btn" onclick="saveModalStatus()">💾 حفظ الحالة</button>
+      <button class="close-btn" onclick="closeModalDirect()" style="padding:11px 20px;width:auto;font-size:14px;font-family:Cairo,sans-serif;font-weight:700">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// =====================================================
+// CONFIG — reads from window.APP_CONFIG set by config.js
+// =====================================================
+const CFG = window.APP_CONFIG || {};
+const S3_BUCKET = CFG.S3_BUCKET || '';
+const S3_REGION = CFG.S3_REGION || '';
+const S3_ACCESS = CFG.S3_ACCESS_KEY || '';
+const S3_SECRET = CFG.S3_SECRET_KEY || '';
+const S3_BASE   = `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com`;
+
+// =====================================================
+// AWS Signature V4 — pure browser implementation
+// =====================================================
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  return Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function sha256Buf(buffer) {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function hmacSHA256(key, data) {
+  const k = typeof key === 'string' ? new TextEncoder().encode(key) : key;
+  const cryptoKey = await crypto.subtle.importKey('raw', k, { name:'HMAC', hash:'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(data));
+  return new Uint8Array(sig);
+}
+
+async function getSigningKey(secret, date, region, service) {
+  const kDate    = await hmacSHA256('AWS4' + secret, date);
+  const kRegion  = await hmacSHA256(kDate, region);
+  const kService = await hmacSHA256(kRegion, service);
+  const kSign    = await hmacSHA256(kService, 'aws4_request');
+  return kSign;
+}
+
+function toHex(arr) {
+  return Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// Upload a File object to S3 with progress tracking
+async function uploadToS3(file, s3Key, onProgress) {
+  const now = new Date();
+  const dateStamp  = now.toISOString().replace(/[-:]/g,'').slice(0,8); // YYYYMMDD
+  const amzDate    = now.toISOString().replace(/[-:]/g,'').replace('.','').slice(0,15) + 'Z'; // YYYYMMDDTHHMMSSZ
+  const service    = 's3';
+  const credScope  = `${dateStamp}/${S3_REGION}/${service}/aws4_request`;
+  const algorithm  = 'AWS4-HMAC-SHA256';
+
+  const buf = await file.arrayBuffer();
+  const payloadHash = await sha256Buf(buf);
+
+  const headers = {
+    'Content-Type': file.type || 'application/octet-stream',
+    'Host': `${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com`,
+    'x-amz-content-sha256': payloadHash,
+    'x-amz-date': amzDate,
+  };
+
+  // Canonical headers (sorted)
+  const sortedKeys = Object.keys(headers).sort((a,b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  const canonicalHeaders = sortedKeys.map(k => `${k.toLowerCase()}:${headers[k]}`).join('\n') + '\n';
+  const signedHeaders    = sortedKeys.map(k => k.toLowerCase()).join(';');
+
+  const canonicalRequest = [
+    'PUT',
+    '/' + s3Key,
+    '',
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join('\n');
+
+  const stringToSign = [
+    algorithm,
+    amzDate,
+    credScope,
+    await sha256(canonicalRequest),
+  ].join('\n');
+
+  const signingKey = await getSigningKey(S3_SECRET, dateStamp, S3_REGION, service);
+  const sigArr     = await hmacSHA256(signingKey, stringToSign);
+  const signature  = toHex(sigArr);
+
+  const authorization = `${algorithm} Credential=${S3_ACCESS}/${credScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  const url = `${S3_BASE}/${s3Key}`;
+
+  // Use XHR for progress events
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url, true);
+    xhr.setRequestHeader('Content-Type', headers['Content-Type']);
+    xhr.setRequestHeader('x-amz-content-sha256', payloadHash);
+    xhr.setRequestHeader('x-amz-date', amzDate);
+    xhr.setRequestHeader('Authorization', authorization);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(url);
+      } else {
+        reject(new Error(`S3 error ${xhr.status}: ${xhr.responseText}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Network error during S3 upload'));
+    xhr.send(buf);
+  });
+}
+
+// =====================================================
+// FILE STATE
+// =====================================================
+let fileObjects = { passport: null, id: null, signature: null, photo: null };
+let s3Urls      = { passport: null, id: null, signature: null, photo: null };
+let localPrev   = { passport: null, id: null, signature: null, photo: null };
+
+function handleFile(input, key) {
+  const file = input.files[0];
+  if (file) previewFile(file, key);
+}
+function handleDrag(e, zone)  { e.preventDefault(); zone.classList.add('dragover'); }
+function handleDragLeave(zone){ zone.classList.remove('dragover'); }
+function handleDrop(e, key, zone) {
+  e.preventDefault(); zone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) previewFile(file, key);
+}
+
+function previewFile(file, key) {
+  fileObjects[key] = file;
+  const zone  = document.getElementById('zone-' + key);
+  const prev  = document.getElementById('prev-' + key);
+  const stat  = document.getElementById('stat-' + key);
+
+  zone.classList.remove('error','uploading');
+  zone.classList.add('has-file');
+  stat.className = 'upload-status ok';
+  stat.textContent = '✅ ' + file.name;
+  stat.style.display = 'block';
+
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      localPrev[key] = e.target.result;
+      prev.src = e.target.result;
+      prev.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    localPrev[key] = null;
+    prev.style.display = 'none';
+  }
+}
+
+// =====================================================
+// SUBMIT — upload all files then save app record
+// =====================================================
+async function submitApp(e) {
+  e.preventDefault();
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+
+  const form = document.getElementById('appForm');
+  const fd   = new FormData(form);
+  const data = Object.fromEntries(fd.entries());
+  const dob  = `${data.dobDay}/${data.dobMonth}/${data.dobYear}`;
+  const appId = 'APP-' + Date.now().toString(36).toUpperCase();
+
+  // Show overlay
+  document.getElementById('uploadOverlay').classList.add('open');
+
+  const keys = ['passport','id','signature','photo'];
+  const labels = { passport:'جواز السفر', id:'بطاقة الهوية', signature:'التوقيع', photo:'الصورة الشخصية' };
+
+  let done = 0;
+  const urlMap = {};
+
+  for (const key of keys) {
+    const file = fileObjects[key];
+    if (!file) { done++; continue; }
+
+    document.getElementById('overlayStatus').textContent = `جارٍ رفع ${labels[key]}...`;
+    document.getElementById('prog-' + key).style.display = 'block';
+
+    const ext    = file.name.split('.').pop();
+    const s3Key  = `applications/${appId}/${key}.${ext}`;
+
+    try {
+      const url = await uploadToS3(file, s3Key, (pct) => {
+        document.getElementById('bar-' + key).style.width = Math.round(pct * 100) + '%';
+        document.getElementById('overallBar').style.width = Math.round(((done + pct) / keys.length) * 100) + '%';
+      });
+      urlMap[key] = url;
+      s3Urls[key] = url;
+    } catch (err) {
+      console.error('Upload error', key, err);
+      urlMap[key] = null; // continue anyway, store null
+    }
+
+    done++;
+    document.getElementById('overallBar').style.width = Math.round((done / keys.length) * 100) + '%';
+  }
+
+  document.getElementById('uploadOverlay').classList.remove('open');
+
+  // Save record
+  const app = {
+    id: appId,
+    firstName: data.firstName,
+    lastName: data.lastName,
+    phone: data.phone,
+    licenseNum: data.licenseNum,
+    dob,
+    sex: data.sex,
+    eyes: data.eyes,
+    height: data.height,
+    status: 'pending',
+    submittedAt: new Date().toLocaleString('ar-EG'),
+    s3Urls: urlMap,
+    localPrev: { ...localPrev }
+  };
+
+  const apps = getApps();
+  apps.unshift(app);
+  saveApps(apps);
+
+  document.getElementById('generatedId').textContent = appId;
+  document.getElementById('formWrapper').style.display = 'none';
+  document.getElementById('successWrapper').style.display = 'block';
+  btn.disabled = false;
+}
+
+function resetForm() {
+  document.getElementById('appForm').reset();
+  fileObjects = { passport: null, id: null, signature: null, photo: null };
+  s3Urls      = { passport: null, id: null, signature: null, photo: null };
+  localPrev   = { passport: null, id: null, signature: null, photo: null };
+
+  ['passport','id','signature','photo'].forEach(k => {
+    const zone = document.getElementById('zone-' + k);
+    zone.classList.remove('has-file','uploading','error');
+    document.getElementById('prev-' + k).style.display = 'none';
+    const stat = document.getElementById('stat-' + k);
+    stat.style.display = 'none'; stat.textContent = '';
+    document.getElementById('prog-' + k).style.display = 'none';
+    document.getElementById('bar-' + k).style.width = '0%';
+  });
+  document.getElementById('formWrapper').style.display = 'block';
+  document.getElementById('successWrapper').style.display = 'none';
+}
+
+// =====================================================
+// STORAGE
+// =====================================================
+function getApps() { try { return JSON.parse(localStorage.getItem('dlApps') || '[]'); } catch { return []; } }
+function saveApps(apps) { localStorage.setItem('dlApps', JSON.stringify(apps)); }
+
+// =====================================================
+// AUTH
+// =====================================================
+const ADMIN_USER = 'mohammad.raddad';
+const ADMIN_PASS = '@Admin123456++';
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if (u === ADMIN_USER && p === ADMIN_PASS) {
+    sessionStorage.setItem('adminLogged', '1');
+    document.getElementById('loginError').style.display = 'none';
+    document.getElementById('navLogout').style.display = '';
+    document.getElementById('navLogin').style.display = 'none';
+    showPage('admin');
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+
+function adminLogout() {
+  sessionStorage.removeItem('adminLogged');
+  document.getElementById('navLogout').style.display = 'none';
+  document.getElementById('navLogin').style.display = '';
+  showPage('app');
+}
+
+// =====================================================
+// NAVIGATION
+// =====================================================
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  if (page === 'admin') {
+    if (!sessionStorage.getItem('adminLogged')) { showPage('login'); return; }
+    document.getElementById('pageAdmin').classList.add('active');
+    renderStats(); renderTable();
+  } else if (page === 'login') {
+    document.getElementById('pageLogin').classList.add('active');
+  } else {
+    document.getElementById('pageApp').classList.add('active');
+  }
+}
+
+document.getElementById('navApp').addEventListener('click', () => showPage('app'));
+document.getElementById('navLogin').addEventListener('click', () => {
+  sessionStorage.getItem('adminLogged') ? showPage('admin') : showPage('login');
+});
+
+if (sessionStorage.getItem('adminLogged')) {
+  document.getElementById('navLogout').style.display = '';
+  document.getElementById('navLogin').style.display = 'none';
+}
+
+// =====================================================
+// ADMIN TABLE
+// =====================================================
+const statusMap = {
+  pending:    '<span class="status-badge pending"><span class="status-dot"></span>قيد الانتظار</span>',
+  processing: '<span class="status-badge processing"><span class="status-dot"></span>قيد المعالجة</span>',
+  shipped:    '<span class="status-badge shipped"><span class="status-dot"></span>تم الشحن</span>',
+  delivered:  '<span class="status-badge delivered"><span class="status-dot"></span>تم التسليم</span>',
+};
+
+function renderStats() {
+  const apps = getApps();
+  document.getElementById('statTotal').textContent     = apps.length;
+  document.getElementById('statPending').textContent   = apps.filter(a=>a.status==='pending').length;
+  document.getElementById('statShipped').textContent   = apps.filter(a=>a.status==='shipped').length;
+  document.getElementById('statDelivered').textContent = apps.filter(a=>a.status==='delivered').length;
+}
+
+function renderTable() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  let apps = getApps();
+  if (q) apps = apps.filter(a =>
+    (a.firstName+' '+a.lastName).toLowerCase().includes(q) ||
+    a.id.toLowerCase().includes(q) ||
+    (a.licenseNum||'').toLowerCase().includes(q)
+  );
+  renderStats();
+  const wrap = document.getElementById('tableWrapper');
+  if (!apps.length) { wrap.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>لا توجد طلبات حتى الآن</p></div>`; return; }
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>رقم الطلب</th><th>الاسم الكامل</th><th>رقم الرخصة</th>
+        <th>الهاتف</th><th>تاريخ التقديم</th><th>الحالة</th><th>تغيير الحالة</th><th>تفاصيل</th>
+      </tr></thead>
+      <tbody>
+        ${apps.map(a=>`
+          <tr>
+            <td><code style="font-size:12px;color:var(--primary-light)">${a.id}</code></td>
+            <td><strong>${a.firstName} ${a.lastName}</strong></td>
+            <td>${a.licenseNum||'-'}</td>
+            <td dir="ltr" style="text-align:right">${a.phone||'-'}</td>
+            <td style="font-size:12px;color:var(--text-muted)">${a.submittedAt}</td>
+            <td>${statusMap[a.status]||statusMap.pending}</td>
+            <td>
+              <select class="status-select" onchange="updateStatus('${a.id}',this.value)">
+                <option value="pending" ${a.status==='pending'?'selected':''}>⏳ قيد الانتظار</option>
+                <option value="processing" ${a.status==='processing'?'selected':''}>🔄 قيد المعالجة</option>
+                <option value="shipped" ${a.status==='shipped'?'selected':''}>📦 تم الشحن</option>
+                <option value="delivered" ${a.status==='delivered'?'selected':''}>✅ تم التسليم</option>
+              </select>
+            </td>
+            <td><button class="view-btn" onclick="openModal('${a.id}')">عرض</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+function updateStatus(id, status) {
+  const apps = getApps();
+  const i = apps.findIndex(a=>a.id===id);
+  if (i>=0) { apps[i].status=status; saveApps(apps); renderTable(); showToast('✅ تم تحديث الحالة','success'); }
+}
+
+// =====================================================
+// MODAL
+// =====================================================
+let currentModalId = null;
+
+function openModal(id) {
+  const app = getApps().find(a=>a.id===id);
+  if (!app) return;
+  currentModalId = id;
+  document.getElementById('modalTitle').textContent = `تفاصيل الطلب — ${app.id}`;
+  document.getElementById('modalStatusSelect').value = app.status;
+
+  const urls = app.s3Urls || {};
+  const prev = app.localPrev || {};
+
+  function attBox(key, label) {
+    const url  = urls[key];
+    const purl = prev[key];
+    if (!url && !purl) return `<div class="att-box"><div class="att-none">غير متاح</div><div class="att-lbl">${label}</div></div>`;
+    const displaySrc = purl || url;
+    const isImg = displaySrc && (displaySrc.startsWith('data:image') || /\.(png|jpg|jpeg|gif|webp)$/i.test(url||''));
+    const inner = isImg
+      ? `<img class="att-img" src="${displaySrc}" alt="${label}" onclick="window.open('${url||displaySrc}','_blank')">`
+      : `<div class="att-file-icon">📄</div>`;
+    const link = url ? `<a class="att-link" href="${url}" target="_blank">فتح ↗</a>` : '';
+    return `<div class="att-box">${inner}<div class="att-lbl">${label} ${link}</div></div>`;
+  }
+
+  document.getElementById('modalBody').innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-item"><div class="d-label">الاسم الأول</div><div class="d-val">${app.firstName}</div></div>
+      <div class="detail-item"><div class="d-label">الاسم الأخير</div><div class="d-val">${app.lastName}</div></div>
+      <div class="detail-item"><div class="d-label">رقم الرخصة</div><div class="d-val" dir="ltr" style="text-align:right">${app.licenseNum}</div></div>
+      <div class="detail-item"><div class="d-label">رقم الهاتف</div><div class="d-val" dir="ltr" style="text-align:right">${app.phone}</div></div>
+      <div class="detail-item"><div class="d-label">تاريخ الميلاد</div><div class="d-val">${app.dob}</div></div>
+      <div class="detail-item"><div class="d-label">الجنس</div><div class="d-val">${app.sex}</div></div>
+      <div class="detail-item"><div class="d-label">لون العيون</div><div class="d-val">${app.eyes}</div></div>
+      <div class="detail-item"><div class="d-label">الطول</div><div class="d-val">${app.height} سم</div></div>
+      <div class="detail-item full"><div class="d-label">تاريخ التقديم</div><div class="d-val">${app.submittedAt}</div></div>
+    </div>
+    <div style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:12px">📎 المرفقات (مخزنة في S3)</div>
+    <div class="attachments-row">
+      ${attBox('passport','جواز السفر')}
+      ${attBox('id','بطاقة الهوية')}
+      ${attBox('signature','التوقيع')}
+      ${attBox('photo','الصورة الشخصية')}
+    </div>`;
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function saveModalStatus() { updateStatus(currentModalId, document.getElementById('modalStatusSelect').value); closeModalDirect(); }
+function closeModal(e) { if (e.target===document.getElementById('modalOverlay')) closeModalDirect(); }
+function closeModalDirect() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+// =====================================================
+// TOAST
+// =====================================================
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + type;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
