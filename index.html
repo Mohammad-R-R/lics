@@ -612,6 +612,7 @@ const S3_BUCKET = CFG.S3_BUCKET || '';
 const S3_REGION = CFG.S3_REGION || '';
 const S3_ACCESS = CFG.S3_ACCESS_KEY || '';
 const S3_SECRET = CFG.S3_SECRET_KEY || '';
+const API_BASE = CFG.API_BASE || '';
 const S3_BASE   = `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com`;
 
 // =====================================================
@@ -833,9 +834,15 @@ async function submitApp(e) {
     localPrev: { ...localPrev }
   };
 
-  const apps = getApps();
-  apps.unshift(app);
-  saveApps(apps);
+  try {
+    await createApp(app);
+  } catch (err) {
+    console.error('Save application error', err);
+    showToast('❌ تعذر حفظ الطلب في قاعدة البيانات', 'error');
+    document.getElementById('uploadOverlay').classList.remove('open');
+    btn.disabled = false;
+    return;
+  }
 
   document.getElementById('generatedId').textContent = appId;
   document.getElementById('formWrapper').style.display = 'none';
@@ -863,10 +870,37 @@ function resetForm() {
 }
 
 // =====================================================
-// STORAGE
+// STORAGE (server-side database via /api/apps)
 // =====================================================
-function getApps() { try { return JSON.parse(localStorage.getItem('dlApps') || '[]'); } catch { return []; } }
-function saveApps(apps) { localStorage.setItem('dlApps', JSON.stringify(apps)); }
+let appsCache = [];
+
+async function getApps() {
+  const res = await fetch(`${API_BASE}/api/apps`);
+  if (!res.ok) throw new Error(`Failed to load applications (${res.status})`);
+  const apps = await res.json();
+  appsCache = Array.isArray(apps) ? apps : [];
+  return appsCache;
+}
+
+async function createApp(appRecord) {
+  const res = await fetch(`${API_BASE}/api/apps`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(appRecord)
+  });
+  if (!res.ok) throw new Error(`Failed to save application (${res.status})`);
+  await getApps();
+}
+
+async function saveStatus(id, status) {
+  const res = await fetch(`${API_BASE}/api/apps/${encodeURIComponent(id)}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+  if (!res.ok) throw new Error(`Failed to update status (${res.status})`);
+  await getApps();
+}
 
 // =====================================================
 // AUTH
@@ -903,7 +937,7 @@ function showPage(page) {
   if (page === 'admin') {
     if (!sessionStorage.getItem('adminLogged')) { showPage('login'); return; }
     document.getElementById('pageAdmin').classList.add('active');
-    renderStats(); renderTable();
+    renderTable();
   } else if (page === 'login') {
     document.getElementById('pageLogin').classList.add('active');
   } else {
@@ -931,23 +965,28 @@ const statusMap = {
   delivered:  '<span class="status-badge delivered"><span class="status-dot"></span>تم التسليم</span>',
 };
 
-function renderStats() {
-  const apps = getApps();
+function renderStats(apps = appsCache) {
   document.getElementById('statTotal').textContent     = apps.length;
   document.getElementById('statPending').textContent   = apps.filter(a=>a.status==='pending').length;
   document.getElementById('statShipped').textContent   = apps.filter(a=>a.status==='shipped').length;
   document.getElementById('statDelivered').textContent = apps.filter(a=>a.status==='delivered').length;
 }
 
-function renderTable() {
+async function renderTable() {
   const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
-  let apps = getApps();
+  let apps = [];
+  try {
+    apps = await getApps();
+  } catch (err) {
+    console.error('Load applications error', err);
+    showToast('❌ تعذر تحميل البيانات من قاعدة البيانات', 'error');
+  }
   if (q) apps = apps.filter(a =>
     (a.firstName+' '+a.lastName).toLowerCase().includes(q) ||
     a.id.toLowerCase().includes(q) ||
     (a.licenseNum||'').toLowerCase().includes(q)
   );
-  renderStats();
+  renderStats(appsCache);
   const wrap = document.getElementById('tableWrapper');
   if (!apps.length) { wrap.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>لا توجد طلبات حتى الآن</p></div>`; return; }
 
@@ -981,10 +1020,15 @@ function renderTable() {
     </table>`;
 }
 
-function updateStatus(id, status) {
-  const apps = getApps();
-  const i = apps.findIndex(a=>a.id===id);
-  if (i>=0) { apps[i].status=status; saveApps(apps); renderTable(); showToast('✅ تم تحديث الحالة','success'); }
+async function updateStatus(id, status) {
+  try {
+    await saveStatus(id, status);
+    renderTable();
+    showToast('✅ تم تحديث الحالة','success');
+  } catch (err) {
+    console.error('Status update error', err);
+    showToast('❌ تعذر تحديث الحالة', 'error');
+  }
 }
 
 // =====================================================
@@ -992,8 +1036,11 @@ function updateStatus(id, status) {
 // =====================================================
 let currentModalId = null;
 
-function openModal(id) {
-  const app = getApps().find(a=>a.id===id);
+async function openModal(id) {
+  if (!appsCache.length) {
+    try { await getApps(); } catch {}
+  }
+  const app = appsCache.find(a=>a.id===id);
   if (!app) return;
   currentModalId = id;
   document.getElementById('modalTitle').textContent = `تفاصيل الطلب — ${app.id}`;
